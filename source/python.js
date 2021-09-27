@@ -2174,6 +2174,7 @@ python.Execution = class {
         this.registerType('sklearn.preprocessing.label.LabelBinarizer', class {});
         this.registerType('sklearn.preprocessing.label.LabelEncoder', class {});
         this.registerType('sklearn.preprocessing.label.MultiLabelBinarizer', class {});
+        this.registerType('sklearn.svm._classes.LinearSVC', class {});
         this.registerType('sklearn.svm._classes.SVC', class {});
         this.registerType('sklearn.svm._classes.SVR', class {});
         this.registerType('sklearn.svm.classes.LinearSVC', class {});
@@ -2566,7 +2567,6 @@ python.Execution = class {
                 }
                 const obj = {};
                 obj.__proto__ = target;
-                obj.__class__ = target;
                 if (obj.__init__ && typeof obj.__init__ === 'function') {
                     obj.__init__.apply(obj, args);
                 }

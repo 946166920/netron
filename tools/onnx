@@ -64,17 +64,11 @@ install() {
                 PYTHON_ARCHITECTURE=$(${python} -c "import platform; print(platform.uname().machine);")
                 export CMAKE_ARGS="-DCMAKE_OSX_ARCHITECTURES=${PYTHON_ARCHITECTURE}"
                 if [ ${PYTHON_ARCHITECTURE} = "arm64" ]; then
-                    [ -x "$(brew --prefix openblas)" ] || brew install openblas > /dev/null
-                    export OPENBLAS=$(brew --prefix openblas)
                     pep517=--no-use-pep517
-                    venv
-                    ${python} -m pip install --quiet --upgrade cython
-                    deactivate
                 fi
             fi
             ;;
         msys*)
-            [ ! -z "$(choco list --local-only --exacty --limit-output visualstudio2017-workload-vctools)" ] || $(choco install -yes visualstudio2017-workload-vctools) > /dev/null
             protoc_version=3.16.0
             protoc_dir="$(pwd)/third_party/bin/protobuf/v${protoc_version}"
             programfiles_x86_dir=$(env | grep "^ProgramFiles(x86)=" | cut -d '=' -f 2)

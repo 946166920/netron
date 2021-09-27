@@ -108,24 +108,27 @@ tflite.Model = class {
         });
         let modelMetadata = null;
         for (const metadata of model.metadata) {
-            switch (metadata.name) {
-                case 'min_runtime_version': {
-                    const data = model.buffers[metadata.buffer].data;
-                    this._runtime = data ? new TextDecoder().decode(data) : undefined;
-                    break;
-                }
-                case 'TFLITE_METADATA': {
-                    const data = model.buffers[metadata.buffer].data || new Uint8Array(0);
-                    const reader = flatbuffers.BinaryReader.open(data);
-                    if (tflite.schema.ModelMetadata.identifier(reader)) {
-                        modelMetadata = tflite.schema.ModelMetadata.create(reader);
-                        this._name = modelMetadata.name || '';
-                        this._version = modelMetadata.version || '';
-                        this._description = modelMetadata.description ? [ this.description, modelMetadata.description].join(' ') : this._description;
-                        this._author = modelMetadata.author || '';
-                        this._license = modelMetadata.license || '';
+            const buffer = model.buffers[metadata.buffer];
+            if (buffer) {
+                switch (metadata.name) {
+                    case 'min_runtime_version': {
+                        const data = buffer.data || new Uint8Array(0);
+                        this._runtime = data ? new TextDecoder().decode(data) : undefined;
+                        break;
                     }
-                    break;
+                    case 'TFLITE_METADATA': {
+                        const data = buffer.data || new Uint8Array(0);
+                        const reader = flatbuffers.BinaryReader.open(data);
+                        if (tflite.schema.ModelMetadata.identifier(reader)) {
+                            modelMetadata = tflite.schema.ModelMetadata.create(reader);
+                            this._name = modelMetadata.name || '';
+                            this._version = modelMetadata.version || '';
+                            this._description = modelMetadata.description ? [ this.description, modelMetadata.description].join(' ') : this._description;
+                            this._author = modelMetadata.author || '';
+                            this._license = modelMetadata.license || '';
+                        }
+                        break;
+                    }
                 }
             }
         }
@@ -340,7 +343,12 @@ tflite.Node = class {
                     try {
                         const reader = flexbuffers.Reader.open(node.custom_options);
                         const custom_options = reader.read();
-                        if (custom_options) {
+                        if (Array.isArray(custom_options)) {
+                            const attribute = new tflite.Attribute(null, 'custom_options', custom_options);
+                            this._attributes.push(attribute);
+                            decoded = true;
+                        }
+                        else if (custom_options) {
                             for (const pair of Object.entries(custom_options)) {
                                 const key = pair[0];
                                 const value = pair[1];

@@ -55,19 +55,20 @@ sidebar.Sidebar = class {
     }
 
     _hide() {
-        const sidebarElement = this._getElementById('sidebar');
-        if (sidebarElement) {
-            sidebarElement.style.width = '0';
+        const sidebar = this._getElementById('sidebar');
+        if (sidebar) {
+            sidebar.style.width = '0px';
         }
-        const graphElement = this._getElementById('graph');
-        if (graphElement) {
-            graphElement.style.marginRight = '0';
+        const graph = this._getElementById('graph');
+        if (graph) {
+            graph.style.marginRight = '0px';
+            graph.focus();
         }
     }
 
     _deactivate() {
-        const sidebarElement = this._getElementById('sidebar');
-        if (sidebarElement) {
+        const sidebar = this._getElementById('sidebar');
+        if (sidebar) {
             const closeButton = this._getElementById('sidebar-closebutton');
             if (closeButton) {
                 closeButton.removeEventListener('click', this._closeSidebarHandler);
@@ -80,14 +81,14 @@ sidebar.Sidebar = class {
 
     _activate(item) {
         const width = 'min(calc(100vw * 0.6), 500px)';
-        const sidebarElement = this._getElementById('sidebar');
-        if (sidebarElement) {
-            sidebarElement.innerHTML = '';
+        const sidebar = this._getElementById('sidebar');
+        if (sidebar) {
+            sidebar.innerHTML = '';
 
-            const titleElement = this._host.document.createElement('h1');
-            titleElement.classList.add('sidebar-title');
-            titleElement.innerHTML = item.title ? item.title.toUpperCase() : '';
-            sidebarElement.appendChild(titleElement);
+            const title = this._host.document.createElement('h1');
+            title.classList.add('sidebar-title');
+            title.innerHTML = item.title ? item.title.toUpperCase() : '';
+            sidebar.appendChild(title);
 
             const closeButton = this._host.document.createElement('a');
             closeButton.classList.add('sidebar-closebutton');
@@ -95,31 +96,31 @@ sidebar.Sidebar = class {
             closeButton.setAttribute('href', 'javascript:void(0)');
             closeButton.innerHTML = '&times;';
             closeButton.addEventListener('click', this._closeSidebarHandler);
-            sidebarElement.appendChild(closeButton);
+            sidebar.appendChild(closeButton);
 
-            const contentElement = this._host.document.createElement('div');
-            contentElement.classList.add('sidebar-content');
-            contentElement.setAttribute('id', 'sidebar-content');
-            sidebarElement.appendChild(contentElement);
+            const content = this._host.document.createElement('div');
+            content.classList.add('sidebar-content');
+            content.setAttribute('id', 'sidebar-content');
+            sidebar.appendChild(content);
 
-            if (typeof content == 'string') {
-                contentElement.innerHTML = item.content;
+            if (typeof item.content == 'string') {
+                content.innerHTML = item.content;
             }
             else if (item.content instanceof Array) {
                 for (const element of item.content) {
-                    contentElement.appendChild(element);
+                    content.appendChild(element);
                 }
             }
             else {
-                contentElement.appendChild(item.content);
+                content.appendChild(item.content);
             }
 
-            sidebarElement.style.width = width;
+            sidebar.style.width = width;
             this._host.document.addEventListener('keydown', this._closeSidebarKeyDownHandler);
         }
-        const graphElement = this._getElementById('graph');
-        if (graphElement) {
-            graphElement.style.marginRight = width;
+        const graph = this._getElementById('graph');
+        if (graph) {
+            graph.style.marginRight = width;
         }
     }
 };
@@ -291,9 +292,9 @@ sidebar.NodeSidebar = class {
                 }
                 return value ? value.map((item) => item.toString()).join(', ') : '(null)';
             case 'graph':
-                return value ? value.toString() : '(null)';
+                return value ? value.name : '(null)';
             case 'graph[]':
-                return value ? value.map((item) => item.toString()).join(', ') : '(null)';
+                return value ? value.map((graph) => graph.name).join(', ') : '(null)';
             case 'tensor':
                 if (value && value.type && value.type.shape && value.type.shape.dimensions && value.type.shape.dimensions.length == 0) {
                     return value.toString();
@@ -512,6 +513,7 @@ class NodeAttributeView {
         }
         const value = this._attribute.value;
         switch (type) {
+            case 'graph':
             case 'function': {
                 const line = this._host.document.createElement('div');
                 line.className = 'sidebar-view-item-value-line-link';
@@ -1025,7 +1027,7 @@ sidebar.DocumentationSidebar = class {
                 this._append(element, 'dl', 'In domain <tt>' + documentation.domain + '</tt> since version <tt>' + documentation.version + '</tt> at support level <tt>' + documentation.support_level + '</tt>.');
             }
 
-            if (!this._host.browser) {
+            if (!this._host.type !== 'Electron') {
                 element.addEventListener('click', (e) => {
                     if (e.target && e.target.href) {
                         const link = e.target.href;

@@ -48,8 +48,8 @@ class Application {
             event.returnValue = {
                 version: electron.app.getVersion(),
                 package: electron.app.isPackaged,
-                zoom: 'drag'
-                // zoom: 'scroll'
+                zoom: 'scroll'
+                // zoom: 'drag'
             };
         });
         electron.ipcMain.on('get-configuration', (event, obj) => {
@@ -320,7 +320,6 @@ class Application {
             fullscreenable: false,
             webPreferences: {
                 nodeIntegration: true,
-                contextIsolation: true,
             }
         };
         if (process.platform === 'darwin') {
@@ -692,8 +691,7 @@ class View {
             height: size.height > 768 ? 768 : size.height,
             webPreferences: {
                 preload: path.join(__dirname, 'electron.js'),
-                nodeIntegration: true,
-                contextIsolation: true
+                nodeIntegration: true
             }
         };
         if (this._owner.count > 0 && View._position && View._position.length == 2) {

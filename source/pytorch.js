@@ -1059,9 +1059,11 @@ pytorch.Execution = class extends python.Execution {
         this.registerType('torch.quantization.QConfig.QConfig', class {});
         this.registerType('torch.quantization.stubs.DeQuantStub', class {});
         this.registerType('torch.quantization.stubs.QuantStub', class {});
+        this.registerType('torch.utils.data.dataloader._MultiProcessingDataLoaderIter', class {});
         this.registerType('torch.utils.data.dataloader.DataLoader', class {});
         this.registerType('torch.utils.data.dataset.Subset', class {});
         this.registerType('torch.utils.data.dataset.ConcatDataset', class {});
+        this.registerType('torch.utils.data.dataset.TensorDataset', class {});
         this.registerType('torch.utils.data.sampler.BatchSampler', class {});
         this.registerType('torch.utils.data.sampler.RandomSampler', class {});
         this.registerType('torch.utils.data.sampler.SequentialSampler', class {});
@@ -2476,7 +2478,28 @@ pytorch.Container.Zip = class {
                 }
             }
             if (this.format.startsWith('TorchScript ')) {
-                this._type = 'script';
+                if (this._torchscriptArena || this._data.forward) {
+                    this._type = 'script';
+                }
+                else {
+                    if (!Object.entries(this._data).every((entry) => entry[0].indexOf('|') !== -1 && pytorch.Utility.isTensor(entry[1]))) {
+                        throw new pytorch.Error('File does not contain forward function or state dictionary.');
+                    }
+                    const layers = new Map();
+                    for (const entry of Object.entries(this._data)) {
+                        const key = entry[0].split('|');
+                        const value = entry[1];
+                        const parameterName = key.pop();
+                        const name = key.join('|');
+                        if (!layers.has(name)) {
+                            layers.set(name, { name: name, states: [] });
+                        }
+                        const layer = layers.get(name);
+                        layer.states.push({ name: parameterName, arguments: [ { id: '', value: value } ] });
+                    }
+                    this._type = 'weights';
+                    this._data = [ { layers: layers.values() } ];
+                }
             }
             else {
                 const obj = this._data;
@@ -3381,14 +3404,18 @@ pytorch.Utility = class {
             if (obj && Object(obj) === obj) {
                 const integer = new Set([ 'epoch', 'i_batch', 'num_vid', 'seen' ]);
                 const target = {};
-                for (const key of Object.keys(obj)) {
-                    const value = obj[key];
+                for (const entry of Object.entries(obj)) {
+                    const key = entry[0];
+                    const value = entry[1];
                     if (key.indexOf('optim') !== -1 || key.indexOf('opt') !== -1) {
                         if (value === null || (value.state && value.param_groups)) {
                             continue;
                         }
                     }
                     if (key.indexOf('loss') !== -1 && Array.isArray(value)) {
+                        continue;
+                    }
+                    if (key.startsWith('spk_dict_') && Object(value) === value && Object.keys(value).length === 0) {
                         continue;
                     }
                     if (integer.has(key) && Number.isInteger(value)) {
@@ -3468,9 +3495,9 @@ pytorch.Utility = class {
         else if (obj instanceof Map && validate(obj)) {
             map.set('', flatten(obj));
         }
-        else if (Object(obj) === obj && Object.keys(obj).every((key) => validate(obj[key]))) {
-            for (const key of Object.keys(obj)) {
-                map.set(key, obj[key]);
+        else if (Object(obj) === obj && Object.entries(obj).every((entry) => validate(entry[1]))) {
+            for (const entry of Object.entries(obj)) {
+                map.set(entry[0], entry[1]);
             }
         }
         else if (Object(obj) === obj && Object.keys(obj).every((key) => pytorch.Utility.isTensor(obj[key]))) {
