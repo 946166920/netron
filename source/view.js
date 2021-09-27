@@ -880,7 +880,7 @@ view.View = class {
                                 [ 'quint8', 'u1' ], [ 'quint16', 'u2' ]
                             ]);
                             const array = new numpy.Array();
-                            array.shape = tensor.type.shape.dimensions;
+                            array.shape = tensor.type.rawShape == null ? tensor.type.shape.dimensions : tensor.type.rawShape.dimensions;
                             array.data = tensor.value;
                             array.dataType = dataTypeMap.has(tensor.type.dataType) ? dataTypeMap.get(tensor.type.dataType) : tensor.type.dataType;
                             const blob = new Blob([ array.toBuffer() ], { type: 'application/octet-stream' });
@@ -1011,6 +1011,21 @@ view.Node = class extends grapher.Node {
         if (node.type.nodes) {
             header.add(null, styles, '\u0192', 'Show Function Definition', () => {
                 this.context.view.pushGraph(node.type);
+            });
+        }
+        if(node.device == "NPU"){
+            header.add(null,["node-item-type-device", "node-item-type-device-npu"], "NPU", null, () => {
+                this.context.view.showNodeProperties(node, null);
+            });
+        }
+        if(node.device == "CPU"){
+            header.add(null,["node-item-type-device", "node-item-type-device-cpu"], "CPU", null, () => {
+                this.context.view.showNodeProperties(node, null);
+            });
+        }
+        if(node.device == "NPU && CPU"){
+            header.add(null,["node-item-type-device", "node-item-type-device-both"], "NPU && CPU", null, () => {
+                this.context.view.showNodeProperties(node, null);
             });
         }
         if (node.nodes) {

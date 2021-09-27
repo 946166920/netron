@@ -417,7 +417,132 @@ om.Tensor = class {
     }
 
     get state() {
-        return 'Tensor data not implemented.';
+        return this._context().state;
+    }
+
+    get value() {
+        const context = this._context();
+        if (context.state) {
+            return null;
+        }
+        context.limit = Number.MAX_SAFE_INTEGER;
+        context.shape = this._type.rawShape.dimensions;
+        return this._decode(context, 0);
+    }
+
+    toString() {
+        if (this._type.shape !== this._type.rawShape) {
+            if (this._type.rawShape.unknown) {
+                return 'Unresolved format, export as 1-D array';
+            }
+            else {
+                return 'Visualization unavailable, export for checking out';
+            }
+        }
+
+        const context = this._context();
+        if (context.state) {
+            return '';
+        }
+        if (context.rawData.length === 0) {
+            return 'Internal Error';
+        }
+        context.limit = 10000;
+        const value = this._decode(context, 0);
+        return JSON.stringify(value, null, 4);
+    }
+
+    _context() {
+        const context = {};
+        context.state = null;
+        context.index = 0;
+        context.count = 0;
+
+        if (this._data == null) {
+            context.state = 'Tensor data is empty.';
+            return context;
+        }
+
+        context.dataType = this._type.dataType;
+        context.shape = this._shape;
+        context.rawData = this._data;
+        return context;
+    }
+
+    _decode(context, dimension) {
+        const shape = (context.shape.length === 0) ? [ 1 ] : context.shape;
+        const results = [];
+        const size = shape[dimension];
+        if (dimension === shape.length - 1) {
+            for (let i = 0; i < size; i++) {
+                if (context.count > context.limit) {
+                    results.push('...');
+                    return results;
+                }
+                if (context.data) {
+                    const value = context.data[context.index++];
+                    results.push(value);
+                    context.count++;
+                }
+                else {
+                    if (context.rawData) {
+                        const view = new DataView(context.rawData.buffer, context.rawData.byteOffset, context.rawData.length);
+                        switch (context.dataType) {
+                            case "uint8":
+                                results.push(view.getUint8(context.index));
+                                context.index += 1;
+                                context.count++;
+                                break;
+                            case "int8":
+                                results.push(view.getInt8(context.index));
+                                context.index += 1;
+                                context.count++;
+                                break;
+                            case "uint32":
+                                results.push(view.getUint32(context.index, true));
+                                context.index += 4;
+                                context.count++;
+                                break;
+                            case "int32":
+                                results.push(view.getInt32(context.index, true));
+                                context.index += 4;
+                                context.count++;
+                                break;
+                            case "int64":
+                                results.push(view.getInt64(context.index, true));
+                                context.index += 8;
+                                context.count++;
+                                break;
+                            case "float16":
+                                results.push(view.getFloat16(context.index, true));
+                                context.index += 2;
+                                context.count++;
+                                break;
+                            case "float32":
+                                results.push(view.getFloat32(context.index, true));
+                                context.index += 4;
+                                context.count++;
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                }
+            }
+        }
+        else {
+            for (let j = 0; j < size; j++) {
+                if (context.count > context.limit) {
+                    results.push('...');
+                    return results;
+                }
+                results.push(this._decode(context, dimension + 1));
+            }
+        }
+        if (context.shape.length === 0) {
+            return results[0];
+        }
+        return results;
     }
 };
 
@@ -454,6 +579,30 @@ om.TensorType = class {
 
     toString() {
         return this.dataType + this._shape.toString();
+    }
+
+    get rawShape() {
+        if (this._denotation === "NCHW" || this._denotation === "NHWC" || this._denotation === "ND") {
+            return this.shape;
+        }
+        let dims = this._shape.dimensions;
+        if (dims.length === 1) {
+            dims = [1, dims[0], 1, 1];
+        }
+        if (this._dtype === "float16") {
+            if (this._denotation === "NC1HWC0") {
+                return new om.TensorShape([dims[0], ~~((parseInt(dims[1]) + 15) / 16), dims[2], dims[3], 16]);
+            }
+            else if (this._denotation === "FRACTAL_Z") {
+                return new om.TensorShape([~~((parseInt(dims[1]) + 15) / 16), dims[2], dims[3], (~~((parseInt(dims[0]) + 15) / 16)) * 16, 16]);
+            }
+        }
+        if (this._dtype === "int8") {
+            if (this._denotation === "FRACTAL_Z") {
+                return new om.TensorShape([~~((parseInt(dims[1]) + 31) / 32), dims[2], dims[3], (~~((parseInt(dims[0]) + 15) / 16)) * 16, 32]);
+            }
+        }
+        return new om.TensorShape([this.size], true);
     }
 };
 
